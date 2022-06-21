@@ -1,0 +1,235 @@
+---
+title: ""
+author: "Max Brown"
+date: "May 20, 2022"
+output: 
+  pdf_document: 
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load-packages}
+# load packages
+library(tidyverse)
+library(knitr)
+library(lme4)
+library(broom.mixed)
+library(skimr)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(knitr)
+library(lme4)
+library(broom.mixed)
+library(skimr)
+library(readr)
+library(ggplot2)
+library(dplyr)
+```
+
+
+
+```{r}
+lefty_ninth <- read_csv("lefty_ninth.csv")
+righty_ninth <- read_csv("righty_ninth.csv")
+```
+
+
+
+
+```{r inch-switch}
+lefty_ninth <- lefty_ninth %>% mutate(hor_break = (pfx_x*12), 
+                                      ind_vert_break = (pfx_z*12))
+righty_ninth <- righty_ninth %>% mutate(hor_break = (pfx_x*12), 
+                                      ind_vert_break = (pfx_z*12))
+```
+
+
+
+
+
+
+
+
+## General EDA 
+
+```{r expected-batting-average-by-speed/angle}
+ggplot(data = subset(righty_ninth, !is.na(estimated_ba_using_speedangle)), 
+       mapping = aes(x=launch_speed, y=launch_angle, 
+                     color = estimated_ba_using_speedangle)) + 
+  geom_point() + labs(title = "Right-Handed Speed/Angle Breakdown", 
+                      x = "Exit Velocity (mph)", 
+                      y = "Launch Angle (degrees)") 
+
+ggplot(data = subset(lefty_ninth, !is.na(estimated_ba_using_speedangle)), 
+       mapping = aes(x=launch_speed, y=launch_angle, 
+                     color = estimated_ba_using_speedangle)) + 
+  geom_point() + labs(title = "Left-Handed Speed/Angle Breakdown", 
+                      x = "Exit Velocity (mph)", 
+                      y = "Launch Angle (degrees)") 
+```
+
+```{r}
+righty_ninth <- righty_ninth %>% 
+  mutate(inplay_out = ifelse(events == c("double_play", "field_out", 
+                                         "fielders_choice_out", "force_out", 
+                                         "grounded_into_double_play", 
+                                         "other_out", "sac_fly",
+                                         "sac_fly_double_play"), "1", "0"))
+
+r_in_play_df <- righty_ninth %>% filter(description == "hit_into_play")
+
+ggplot(data = r_in_play_df, mapping = aes(x=release_speed, y=launch_speed, 
+                                color = inplay_out)) + 
+  geom_point() + labs(title = "No Relationship For Release Speed and Launch Speed/Out Made", 
+                      x = "Release Speed of Pitch", 
+                      y = "Exit Speed of Contact", 
+                      color = "Out Recorded") 
+
+
+```
+
+
+
+
+
+
+
+```{r pitch-breakup}
+rh_fastball <- righty_ninth %>% filter(pitch_type == c("FF", "FA", "SI", "FC"))
+rh_breakingball <- righty_ninth %>% filter(pitch_type == c("KC", "SL", "CU","CS"))
+rh_changeup <- righty_ninth %>% filter(pitch_type == c("CH", "FS"))
+
+lh_fastball <- lefty_ninth %>% filter(pitch_type == c("FF", "FA", "SI", "FC"))
+lh_breakingball <- lefty_ninth %>% filter(pitch_type == c("KC", "SL", "CU","CS"))
+lh_changeup <- lefty_ninth %>% filter(pitch_type == c("CH", "FS"))
+```
+
+
+### Fastball EDA
+
+```{r rh-fastball-groups}
+ggplot(data = rh_fastball, mapping = aes(x=hor_break, y=ind_vert_break, 
+                                color = pitch_name)) + 
+  geom_point() + labs(title = "Right-Handed Fastball Breakdown", 
+                      x = "Horizontal Break (in)", 
+                      y = "Induced Vertical Break (in)") 
+
+```
+
+```{r lh-fastball-groups}
+ggplot(data = lh_fastball, mapping = aes(x=hor_break, y=ind_vert_break, 
+                                color = pitch_name)) + 
+  geom_point() + labs(title = "Left-Handed Fastball Breakdown", 
+                      x = "Horizontal Break (in)", 
+                      y = "Induced Vertical Break (in)") 
+```
+
+```{r}
+rh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+  summarize(release_speed = mean(release_speed), 
+            release_spin = mean(release_spin_rate),
+            hor_break = mean(hor_break), 
+            vert_break = mean(ind_vert_break), 
+            tilt = mean(spin_axis))
+```
+
+
+```{r}
+lh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+  summarize(release_speed = mean(release_speed), 
+            release_spin = mean(release_spin_rate),
+            hor_break = mean(hor_break), 
+            vert_break = mean(ind_vert_break), 
+            tilt = mean(spin_axis))
+```
+
+
+
+### EDA Breaking Balls 
+
+```{r}
+ggplot(data = rh_breakingball, mapping = aes(x=hor_break, y=ind_vert_break, 
+                                color = pitch_name)) + 
+  geom_point() + labs(title = "Right-Handed Breaking Ball Breakdown", 
+                      x = "Horizontal Break (in)", 
+                      y = "Induced Vertical Break (in)") 
+```
+
+```{r}
+ggplot(data = lh_breakingball, mapping = aes(x=hor_break, y=ind_vert_break, 
+                                color = pitch_name)) + 
+  geom_point() + labs(title = "Left-Handed Breaking Ball Breakdown", 
+                      x = "Horizontal Break (in)", 
+                      y = "Induced Vertical Break (in)") 
+```
+
+
+
+```{r}
+rh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+  summarize(release_speed = mean(release_speed), 
+            release_spin = mean(release_spin_rate),
+            hor_break = mean(hor_break), 
+            vert_break = mean(ind_vert_break), 
+            tilt = mean(spin_axis))
+```
+
+```{r}
+lh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+  summarize(release_speed = mean(release_speed), 
+            release_spin = mean(release_spin_rate),
+            hor_break = mean(hor_break), 
+            vert_break = mean(ind_vert_break), 
+            tilt = mean(spin_axis))
+```
+
+
+## Appendix 
+
+```{r}
+right_names = righty_ninth %>% group_by(player_name) %>%  .$player_name
+left_names = lefty_ninth %>% group_by(player_name) %>%  .$player_name
+set.seed(3)
+
+# get sample of 12 pitchers
+sample_righties <- sample(right_names, 12)
+sample_lefties <- sample(left_names, 12)
+
+# get data for those schools
+sample_data_r <- rh_fastball %>%
+  filter(player_name %in% sample_righties)
+
+sample_data_l <- lh_fastball %>% 
+  filter(player_name %in% sample_lefties)
+
+ggplot(data = sample_data_r, mapping = aes(x=release_extension, y=release_speed, 
+                                color = pitch_name)) + facet_wrap(~player_name) +
+  geom_point() + 
+  labs(title = "Inconclusive Evidence of Righty Extension/Speed Relationship", 
+       x = "Release Extension (Feet)", 
+       y = "Release Speed (MPH)")
+
+
+
+```
+
+
+```{r}
+ggplot(data = sample_data_l, mapping = aes(x=release_extension, y=release_speed, 
+                                color = pitch_name)) + facet_wrap(~player_name) +
+  geom_point() + 
+  labs(title = "Inconclusive Evidence of Lefty Extension/Speed Relationship", 
+       x = "Release Extension (Feet)", 
+       y = "Release Speed (MPH)")
+```
