@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "Quantifying The Effect of Pitching Metrics "
 author: "Max Brown"
 date: "May 20, 2022"
 output: 
@@ -9,7 +9,9 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = F, 
+                      warning = F, 
+                      message = F)
 ```
 
 
@@ -51,7 +53,15 @@ righty_ninth <- righty_ninth %>% mutate(hor_break = (pfx_x*12),
 ```
 
 
+```{r pitch-breakup}
+rh_fastball <- righty_ninth %>% filter(pitch_type == c("FF", "FA", "SI", "FC"))
+rh_breakingball <- righty_ninth %>% filter(pitch_type == c("KC", "SL", "CU","CS"))
+rh_changeup <- righty_ninth %>% filter(pitch_type == c("CH", "FS"))
 
+lh_fastball <- lefty_ninth %>% filter(pitch_type == c("FF", "FA", "SI", "FC"))
+lh_breakingball <- lefty_ninth %>% filter(pitch_type == c("KC", "SL", "CU","CS"))
+lh_changeup <- lefty_ninth %>% filter(pitch_type == c("CH", "FS"))
+```
 
 
 
@@ -67,6 +77,10 @@ ggplot(data = subset(righty_ninth, !is.na(estimated_ba_using_speedangle)),
                       x = "Exit Velocity (mph)", 
                       y = "Launch Angle (degrees)") 
 
+
+```
+
+```{r}
 ggplot(data = subset(lefty_ninth, !is.na(estimated_ba_using_speedangle)), 
        mapping = aes(x=launch_speed, y=launch_angle, 
                      color = estimated_ba_using_speedangle)) + 
@@ -98,20 +112,6 @@ ggplot(data = r_in_play_df, mapping = aes(x=release_speed, y=launch_speed,
 
 
 
-
-
-
-```{r pitch-breakup}
-rh_fastball <- righty_ninth %>% filter(pitch_type == c("FF", "FA", "SI", "FC"))
-rh_breakingball <- righty_ninth %>% filter(pitch_type == c("KC", "SL", "CU","CS"))
-rh_changeup <- righty_ninth %>% filter(pitch_type == c("CH", "FS"))
-
-lh_fastball <- lefty_ninth %>% filter(pitch_type == c("FF", "FA", "SI", "FC"))
-lh_breakingball <- lefty_ninth %>% filter(pitch_type == c("KC", "SL", "CU","CS"))
-lh_changeup <- lefty_ninth %>% filter(pitch_type == c("CH", "FS"))
-```
-
-
 ### Fastball EDA
 
 ```{r rh-fastball-groups}
@@ -132,24 +132,28 @@ ggplot(data = lh_fastball, mapping = aes(x=hor_break, y=ind_vert_break,
 ```
 
 ```{r}
-rh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+rhf_stats <- rh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
                         ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
             vert_break = mean(ind_vert_break), 
-            tilt = mean(spin_axis))
+            tilt = mean(spin_axis)) 
+
+kable(rhf_stats, caption = "Average RH Fastball Type Metrics", digits = 2)
 ```
 
 
 ```{r}
-lh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+lhf_stats <- lh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
                         ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
             vert_break = mean(ind_vert_break), 
             tilt = mean(spin_axis))
+
+kable(lhf_stats, caption = "Average LH Fastball Type Metrics", digits = 2)
 ```
 
 
@@ -175,24 +179,135 @@ ggplot(data = lh_breakingball, mapping = aes(x=hor_break, y=ind_vert_break,
 
 
 ```{r}
-rh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+rhb_stats <- rh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
                         ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
             vert_break = mean(ind_vert_break), 
             tilt = mean(spin_axis))
+kable(rhb_stats, caption = "Average RH Breaking Ball Type Metrics", digits = 2)
 ```
 
 ```{r}
-lh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
+lhb_stats <- lh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
                         ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
             vert_break = mean(ind_vert_break), 
             tilt = mean(spin_axis))
+
+kable(lhb_stats, caption = "Average LH Breaking Ball Type Metrics", digits = 2)
 ```
+
+
+### EDA Change Ups
+
+```{r}
+ggplot(data = rh_changeup, mapping = aes(x=hor_break, y=ind_vert_break, 
+                                color = pitch_name)) + 
+  geom_point() + labs(title = "Right-Handed Change Up Breakdown", 
+                      x = "Horizontal Break (in)", 
+                      y = "Induced Vertical Break (in)") 
+```
+
+```{r}
+ggplot(data = lh_changeup, mapping = aes(x=hor_break, y=ind_vert_break, 
+                                color = pitch_name)) + 
+  geom_point() + labs(title = "Left-Handed Change Up Breakdown", 
+                      x = "Horizontal Break (in)", 
+                      y = "Induced Vertical Break (in)") 
+```
+
+
+
+```{r}
+rhc_stats <- rh_changeup %>% drop_na(release_speed, release_spin_rate, hor_break, 
+                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+  summarize(release_speed = mean(release_speed), 
+            release_spin = mean(release_spin_rate),
+            hor_break = mean(hor_break), 
+            vert_break = mean(ind_vert_break), 
+            tilt = mean(spin_axis))
+
+kable(rhc_stats, caption = "Average RH ChangeUp Type Metrics", digits = 2)
+```
+
+```{r}
+lhc_stats <- lh_changeup %>% drop_na(release_speed, release_spin_rate, hor_break, 
+                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+  summarize(release_speed = mean(release_speed), 
+            release_spin = mean(release_spin_rate),
+            hor_break = mean(hor_break), 
+            vert_break = mean(ind_vert_break), 
+            tilt = mean(spin_axis))
+
+kable(lhc_stats, caption = "Average LH Change Up Type Metrics", digits = 2)
+```
+
+
+
+## Methodology 
+
+```{r}
+righty_ninth <- subset(righty_ninth, select = -inplay_out )
+all_rows <- rbind(righty_ninth, lefty_ninth)
+```
+
+
+```{r}
+inplay_avg_benchmark <- all_rows %>% filter(description == "hit_into_play") %>% 
+  drop_na(estimated_ba_using_speedangle) %>%
+  summarise(mean_estimated_ba = mean(estimated_ba_using_speedangle))
+
+inplay_avg_benchmark <- inplay_avg_benchmark$mean_estimated_ba
+```
+
+
+```{r}
+pitcher_ideal_creation <- function(dataset) {
+  dataset <- dataset %>% mutate(pitcher_ideal = if_else(description == "called_strike" | description == "foul"| description == "foul_bunt"| description == "foul_tip"| description == "missed_bunt"| description == "swinging_strike"| description == "swinging_strike_blocked" | estimated_ba_using_speedangle <= inplay_avg_benchmark , 1, 0))
+  dataset <- dataset %>% mutate_at(vars("pitcher_ideal"), ~replace_na(.,0))
+ return(dataset)
+}
+
+rh_fastball <- pitcher_ideal_creation(rh_fastball)
+lh_fastball <- pitcher_ideal_creation(lh_fastball) 
+rh_changeup <- pitcher_ideal_creation(rh_changeup) 
+lh_changeup <- pitcher_ideal_creation(lh_changeup) 
+rh_breakingball <- pitcher_ideal_creation(rh_breakingball)
+lh_breakingball <- pitcher_ideal_creation(lh_breakingball)
+```
+
+
+### Creating Breaking Ball Models 
+
+#### Right-Hand
+
+```{r}
+rh_breakingball <- rh_breakingball %>% mutate(mean_centered_speed = mean(release_speed) - release_speed)
+rh_bb_model <- glm(pitcher_ideal ~ mean_centered_speed + 
+                  hor_break + ind_vert_break, 
+                data = rh_breakingball)
+
+tidy(rh_bb_model) %>% kable(digits = 3)
+```
+
+#### Left-Hand 
+
+```{r}
+lh_breakingball <- lh_breakingball %>% mutate(mean_centered_speed = mean(release_speed) - release_speed)
+lh_bb_model <- glm(pitcher_ideal ~ mean_centered_speed + 
+                  hor_break + ind_vert_break, 
+                data = lh_breakingball)
+
+tidy(lh_bb_model) %>% kable(digits = 3)
+```
+
+
+
+
 
 
 ## Appendix 
