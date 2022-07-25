@@ -1,5 +1,5 @@
 ---
-title: "Quantifying The Effect of Pitching Metrics "
+title: "Quantifying The Effect of Pitching Metrics"
 author: "Max Brown"
 date: "May 20, 2022"
 output: 
@@ -231,7 +231,7 @@ rhc_stats <- rh_changeup %>% drop_na(release_speed, release_spin_rate, hor_break
             vert_break = mean(ind_vert_break), 
             tilt = mean(spin_axis))
 
-kable(rhc_stats, caption = "Average RH ChangeUp Type Metrics", digits = 2)
+kable(rhc_stats, caption = "Average RH Change Up Type Metrics", digits = 2)
 ```
 
 ```{r}
@@ -267,7 +267,7 @@ inplay_avg_benchmark <- inplay_avg_benchmark$mean_estimated_ba
 
 ```{r}
 pitcher_ideal_creation <- function(dataset) {
-  dataset <- dataset %>% mutate(pitcher_ideal = if_else(description == "called_strike" | description == "foul"| description == "foul_bunt"| description == "foul_tip"| description == "missed_bunt"| description == "swinging_strike"| description == "swinging_strike_blocked" | estimated_ba_using_speedangle <= inplay_avg_benchmark , 1, 0))
+  dataset <- dataset %>% mutate(pitcher_ideal = if_else(description == "called_strike" | description == "foul"| description == "foul_bunt"| description == "foul_tip"| description == "missed_bunt"| description == "swinging_strike"| description == "swinging_strike_blocked" | estimated_ba_using_speedangle <= .9 , 1, 0))
   dataset <- dataset %>% mutate_at(vars("pitcher_ideal"), ~replace_na(.,0))
  return(dataset)
 }
@@ -286,23 +286,207 @@ lh_breakingball <- pitcher_ideal_creation(lh_breakingball)
 #### Right-Hand
 
 ```{r}
-rh_breakingball <- rh_breakingball %>% mutate(mean_centered_speed = mean(release_speed) - release_speed)
-rh_bb_model <- glm(pitcher_ideal ~ mean_centered_speed + 
-                  hor_break + ind_vert_break, 
-                data = rh_breakingball)
+rh_breakingball <- rh_breakingball %>% group_by(player_name) %>% 
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+rh_bb_model <- glm(pitcher_ideal ~ release_speed + hor_break + 
+                       ind_vert_break + mean_centered_axis, 
+                     family = "binomial", data = rh_breakingball)
+
 
 tidy(rh_bb_model) %>% kable(digits = 3)
+```
+
+```{r}
+rh_bb_model_final <- glm(pitcher_ideal ~
+                       ind_vert_break, 
+                     family = "binomial", data = rh_breakingball)
+tidy(rh_bb_model_final) %>% kable(digits = 3)
+```
+
+
+
+
+
+
+```{r}
+rh_breakingball <- rh_breakingball %>% 
+  mutate(ideal_prob = (exp(.537) * exp(ind_vert_break*0.015)))
+
+rh_breakingball <- rh_breakingball %>% 
+  mutate(stuff_plus = 100 * (ideal_prob/mean(ideal_prob)))
 ```
 
 #### Left-Hand 
 
 ```{r}
-lh_breakingball <- lh_breakingball %>% mutate(mean_centered_speed = mean(release_speed) - release_speed)
-lh_bb_model <- glm(pitcher_ideal ~ mean_centered_speed + 
-                  hor_break + ind_vert_break, 
-                data = lh_breakingball)
+lh_breakingball <- lh_breakingball %>% group_by(player_name) %>% 
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+lh_bb_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
+                     + mean_centered_axis, 
+                     family = "binomial", data = lh_breakingball)
 
 tidy(lh_bb_model) %>% kable(digits = 3)
+```
+
+
+### Creating Change Up Models
+
+#### Right-Handed 
+```{r}
+rh_changeup <- rh_changeup %>% group_by(player_name) %>% 
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+rh_ch_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
+                     + mean_centered_axis, family = "binomial",
+                     data = rh_changeup)
+
+tidy(rh_ch_model) %>% kable(digits = 3)
+```
+
+
+#### Left-Handed 
+```{r}
+lh_changeup <- lh_changeup %>% group_by(player_name) %>% 
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+lh_ch_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
+                     + mean_centered_axis, family = "binomial", 
+                     data = lh_changeup)
+
+tidy(lh_ch_model) %>% kable(digits = 3)
+```
+
+
+### Creating RH Fastball Models  
+
+#### RH Sinker
+
+```{r}
+rh_sinker <- rh_fastball %>% filter(pitch_type == "SI") %>% group_by(player_name) %>%
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+rh_si_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
+                     + mean_centered_axis, family = "binomial",
+                     data = rh_sinker)
+
+tidy(rh_si_model) %>% kable(digits = 3)
+```
+
+#### RH 4-Seam Fastball 
+
+```{r}
+rh_fourseam <- rh_fastball %>% filter(pitch_type == "FF") %>% group_by(player_name) %>%
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+rh_ff_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break +
+                       mean_centered_axis, family = "binomial", 
+                     data = rh_fourseam)
+
+tidy(rh_ff_model) %>% kable(digits = 3)
+```
+
+```{r}
+rh_ff_model_final <- glm(pitcher_ideal ~  ind_vert_break, family = "binomial", 
+                     data = rh_fourseam)
+
+tidy(rh_ff_model_final) %>% kable(digits = 3)
+
+```
+
+
+```{r}
+rh_fourseam <- rh_fourseam %>% 
+  mutate(ideal_prob = (exp(0.230) * exp(ind_vert_break*0.028)))
+
+rh_fourseam <- rh_fourseam %>% 
+  mutate(stuff_plus = 100 * (ideal_prob/mean(ideal_prob)))
+
+```
+
+
+
+
+
+#### RH Cutter
+```{r}
+rh_cutter <- rh_fastball %>% filter(pitch_type == "FC") %>% group_by(player_name) %>%
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+rh_fc_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break + 
+                       mean_centered_axis, family = "binomial", 
+                     data = rh_cutter)
+
+tidy(rh_fc_model) %>% kable(digits = 3)
+```
+
+
+```{r}
+rh_fc_model_final <- glm(pitcher_ideal ~ release_speed, family = "binomial", 
+                     data = rh_cutter)
+
+tidy(rh_fc_model_final) %>% kable(digits = 3)
+```
+
+```{r}
+rh_fc_model_intercept <- glm(pitcher_ideal ~ 1, family = "binomial", 
+                     data = rh_cutter)
+
+kable(anova(rh_fc_model_final, rh_fc_model_intercept, test = "Chisq"))
+
+```
+
+
+
+
+
+
+### Creating LH Fastball Models  
+
+#### LH Sinker
+
+```{r}
+lh_sinker <- lh_fastball %>% filter(pitch_type == "SI") %>% group_by(player_name) %>%
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+lh_si_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break +
+                       mean_centered_axis, family = "binomial", 
+                     data = lh_sinker)
+
+tidy(lh_si_model) %>% kable(digits = 3)
+```
+
+#### LH 4-Seam Fastball 
+
+```{r}
+lh_fourseam <- lh_fastball %>% filter(pitch_type == "FF") %>% group_by(player_name) %>% 
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+lh_ff_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break +
+                       mean_centered_axis, family = "binomial", 
+                     data = lh_fourseam)
+
+tidy(lh_ff_model) %>% kable(digits = 3)
+```
+
+#### LH Cutter
+```{r}
+lh_cutter <- rh_fastball %>% filter(pitch_type == "FC") %>% group_by(player_name) %>% 
+  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+
+lh_fc_model <- glmer(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break + 
+                       mean_centered_axis + (1|player_name), family = "binomial", 
+                     data = lh_cutter)
+
+tidy(lh_fc_model) %>% kable(digits = 3)
+```
+
+```{r}
+lh_fc_model_final <- glm(pitcher_ideal ~ release_speed, family = "binomial", 
+                     data = lh_cutter)
+
+tidy(lh_fc_model_final) %>% kable(digits = 3)
 ```
 
 
