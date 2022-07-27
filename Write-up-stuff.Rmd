@@ -8,6 +8,12 @@ output:
     fig_width: 5
 ---
 
+
+## Introduction 
+The methodology of analyzing the performance of pitchers has drastically changed over time. At the surface one can evaluate at pitcher's win-loss record to determine their impact on the teams' performance. It's a results-based model, but includes several factors far out of a pitcher's control, fundamentally the 
+
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F, 
                       warning = F, 
@@ -267,7 +273,7 @@ inplay_avg_benchmark <- inplay_avg_benchmark$mean_estimated_ba
 
 ```{r}
 pitcher_ideal_creation <- function(dataset) {
-  dataset <- dataset %>% mutate(pitcher_ideal = if_else(description == "called_strike" | description == "foul"| description == "foul_bunt"| description == "foul_tip"| description == "missed_bunt"| description == "swinging_strike"| description == "swinging_strike_blocked" | estimated_ba_using_speedangle <= .9 , 1, 0))
+  dataset <- dataset %>% mutate(pitcher_ideal = if_else(description == "called_strike" | description == "foul"| description == "foul_bunt"| description == "foul_tip"| description == "missed_bunt"| description == "swinging_strike"| description == "swinging_strike_blocked" | estimated_ba_using_speedangle <= inplay_avg_benchmark, 1, 0))
   dataset <- dataset %>% mutate_at(vars("pitcher_ideal"), ~replace_na(.,0))
  return(dataset)
 }
@@ -311,7 +317,7 @@ tidy(rh_bb_model_final) %>% kable(digits = 3)
 
 ```{r}
 rh_breakingball <- rh_breakingball %>% 
-  mutate(ideal_prob = (exp(.537) * exp(ind_vert_break*0.015)))
+  mutate(ideal_prob = (exp(.537) * exp(ind_vert_break*0.014)))
 
 rh_breakingball <- rh_breakingball %>% 
   mutate(stuff_plus = 100 * (ideal_prob/mean(ideal_prob)))
@@ -398,7 +404,7 @@ tidy(rh_ff_model_final) %>% kable(digits = 3)
 
 ```{r}
 rh_fourseam <- rh_fourseam %>% 
-  mutate(ideal_prob = (exp(0.230) * exp(ind_vert_break*0.028)))
+  mutate(ideal_prob = (exp(0.230) * exp(ind_vert_break*0.037)))
 
 rh_fourseam <- rh_fourseam %>% 
   mutate(stuff_plus = 100 * (ideal_prob/mean(ideal_prob)))
@@ -420,27 +426,6 @@ rh_fc_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break +
 
 tidy(rh_fc_model) %>% kable(digits = 3)
 ```
-
-
-```{r}
-rh_fc_model_final <- glm(pitcher_ideal ~ release_speed, family = "binomial", 
-                     data = rh_cutter)
-
-tidy(rh_fc_model_final) %>% kable(digits = 3)
-```
-
-```{r}
-rh_fc_model_intercept <- glm(pitcher_ideal ~ 1, family = "binomial", 
-                     data = rh_cutter)
-
-kable(anova(rh_fc_model_final, rh_fc_model_intercept, test = "Chisq"))
-
-```
-
-
-
-
-
 
 ### Creating LH Fastball Models  
 
@@ -472,23 +457,15 @@ tidy(lh_ff_model) %>% kable(digits = 3)
 
 #### LH Cutter
 ```{r}
-lh_cutter <- rh_fastball %>% filter(pitch_type == "FC") %>% group_by(player_name) %>% 
+lh_cutter <- lh_fastball %>% filter(pitch_type == "FC") %>% group_by(player_name) %>% 
   mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
 
-lh_fc_model <- glmer(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break + 
-                       mean_centered_axis + (1|player_name), family = "binomial", 
+lh_fc_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break + 
+                       mean_centered_axis, family = "binomial", 
                      data = lh_cutter)
 
 tidy(lh_fc_model) %>% kable(digits = 3)
 ```
-
-```{r}
-lh_fc_model_final <- glm(pitcher_ideal ~ release_speed, family = "binomial", 
-                     data = lh_cutter)
-
-tidy(lh_fc_model_final) %>% kable(digits = 3)
-```
-
 
 
 
