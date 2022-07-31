@@ -52,8 +52,13 @@ righty_ninth <- read_csv("righty_ninth.csv")
 
 
 ```{r inch-switch}
+lefty_ninth <- lefty_ninth %>% drop_na(release_speed, release_spin_rate, pfx_x, 
+                        pfx_z, spin_axis)
 lefty_ninth <- lefty_ninth %>% mutate(hor_break = (pfx_x*12), 
                                       ind_vert_break = (pfx_z*12))
+
+righty_ninth <- righty_ninth %>% drop_na(release_speed, release_spin_rate, pfx_x, 
+                        pfx_z, spin_axis)
 righty_ninth <- righty_ninth %>% mutate(hor_break = (pfx_x*12), 
                                       ind_vert_break = (pfx_z*12))
 ```
@@ -138,8 +143,7 @@ ggplot(data = lh_fastball, mapping = aes(x=hor_break, y=ind_vert_break,
 ```
 
 ```{r}
-rhf_stats <- rh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
-                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+rhf_stats <- rh_fastball %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
@@ -151,8 +155,7 @@ kable(rhf_stats, caption = "Average RH Fastball Type Metrics", digits = 2)
 
 
 ```{r}
-lhf_stats <- lh_fastball %>% drop_na(release_speed, release_spin_rate, hor_break, 
-                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+lhf_stats <- lh_fastball  %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
@@ -185,8 +188,7 @@ ggplot(data = lh_breakingball, mapping = aes(x=hor_break, y=ind_vert_break,
 
 
 ```{r}
-rhb_stats <- rh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
-                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+rhb_stats <- rh_breakingball %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
@@ -196,8 +198,7 @@ kable(rhb_stats, caption = "Average RH Breaking Ball Type Metrics", digits = 2)
 ```
 
 ```{r}
-lhb_stats <- lh_breakingball %>% drop_na(release_speed, release_spin_rate, hor_break, 
-                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+lhb_stats <- lh_breakingball %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
@@ -229,8 +230,7 @@ ggplot(data = lh_changeup, mapping = aes(x=hor_break, y=ind_vert_break,
 
 
 ```{r}
-rhc_stats <- rh_changeup %>% drop_na(release_speed, release_spin_rate, hor_break, 
-                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+rhc_stats <- rh_changeup %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
@@ -241,8 +241,7 @@ kable(rhc_stats, caption = "Average RH Change Up Type Metrics", digits = 2)
 ```
 
 ```{r}
-lhc_stats <- lh_changeup %>% drop_na(release_speed, release_spin_rate, hor_break, 
-                        ind_vert_break, spin_axis) %>% group_by(pitch_name) %>% 
+lhc_stats <- lh_changeup %>% group_by(pitch_name) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
@@ -293,11 +292,12 @@ lh_breakingball <- pitcher_ideal_creation(lh_breakingball)
 
 ```{r}
 rh_breakingball <- rh_breakingball %>% group_by(player_name) %>% 
-  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate) %>% 
+  ungroup()
 
 rh_bb_model <- glm(pitcher_ideal ~ release_speed + hor_break + 
-                       ind_vert_break + mean_centered_axis, 
-                     family = "binomial", data = rh_breakingball)
+                       ind_vert_break + mean_centered_spinrate,
+                   family = "binomial", data = rh_breakingball)
 
 
 tidy(rh_bb_model) %>% kable(digits = 3)
@@ -305,9 +305,9 @@ tidy(rh_bb_model) %>% kable(digits = 3)
 
 ```{r}
 rh_bb_model_final <- glm(pitcher_ideal ~
-                       ind_vert_break, 
+                       ind_vert_break + mean_centered_spinrate, 
                      family = "binomial", data = rh_breakingball)
-tidy(rh_bb_model_final) %>% kable(digits = 3)
+tidy(rh_bb_model_final) %>% kable(digits = 4)
 ```
 
 
@@ -317,7 +317,8 @@ tidy(rh_bb_model_final) %>% kable(digits = 3)
 
 ```{r}
 rh_breakingball <- rh_breakingball %>% 
-  mutate(ideal_prob = (exp(.537) * exp(ind_vert_break*0.014)))
+  mutate(ideal_prob = (exp(.3093 + 0.0135*ind_vert_break + 0.0006*mean_centered_spinrate)
+                       / (1+exp(.3093 + 0.0135*ind_vert_break + 0.0006*mean_centered_spinrate))))
 
 rh_breakingball <- rh_breakingball %>% 
   mutate(stuff_plus = 100 * (ideal_prob/mean(ideal_prob)))
@@ -327,10 +328,10 @@ rh_breakingball <- rh_breakingball %>%
 
 ```{r}
 lh_breakingball <- lh_breakingball %>% group_by(player_name) %>% 
-  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate)
 
-lh_bb_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
-                     + mean_centered_axis, 
+lh_bb_model <- glm(pitcher_ideal ~ release_speed + hor_break + 
+                     ind_vert_break + mean_centered_spinrate, 
                      family = "binomial", data = lh_breakingball)
 
 tidy(lh_bb_model) %>% kable(digits = 3)
@@ -342,23 +343,23 @@ tidy(lh_bb_model) %>% kable(digits = 3)
 #### Right-Handed 
 ```{r}
 rh_changeup <- rh_changeup %>% group_by(player_name) %>% 
-  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate)
 
-rh_ch_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
-                     + mean_centered_axis, family = "binomial",
+rh_ch_model <- glm(pitcher_ideal ~ release_speed + hor_break
+                   + ind_vert_break + mean_centered_spinrate, family = "binomial",
                      data = rh_changeup)
 
-tidy(rh_ch_model) %>% kable(digits = 3)
+tidy(rh_ch_model) %>% kable(digits = 4)
 ```
 
 
 #### Left-Handed 
 ```{r}
 lh_changeup <- lh_changeup %>% group_by(player_name) %>% 
-  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate)
 
 lh_ch_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
-                     + mean_centered_axis, family = "binomial", 
+                     + mean_centered_spinrate, family = "binomial", 
                      data = lh_changeup)
 
 tidy(lh_ch_model) %>% kable(digits = 3)
@@ -371,10 +372,10 @@ tidy(lh_ch_model) %>% kable(digits = 3)
 
 ```{r}
 rh_sinker <- rh_fastball %>% filter(pitch_type == "SI") %>% group_by(player_name) %>%
-  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate)
 
 rh_si_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break
-                     + mean_centered_axis, family = "binomial",
+                     + mean_centered_spinrate, family = "binomial",
                      data = rh_sinker)
 
 tidy(rh_si_model) %>% kable(digits = 3)
@@ -384,10 +385,10 @@ tidy(rh_si_model) %>% kable(digits = 3)
 
 ```{r}
 rh_fourseam <- rh_fastball %>% filter(pitch_type == "FF") %>% group_by(player_name) %>%
-  mutate(mean_centered_axis = mean(spin_axis) - spin_axis)
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate)
 
 rh_ff_model <- glm(pitcher_ideal ~ release_speed  + hor_break + ind_vert_break +
-                       mean_centered_axis, family = "binomial", 
+                       release_spin_rate, family = "binomial", 
                      data = rh_fourseam)
 
 tidy(rh_ff_model) %>% kable(digits = 3)
@@ -397,17 +398,19 @@ tidy(rh_ff_model) %>% kable(digits = 3)
 rh_ff_model_final <- glm(pitcher_ideal ~  ind_vert_break, family = "binomial", 
                      data = rh_fourseam)
 
-tidy(rh_ff_model_final) %>% kable(digits = 3)
+tidy(rh_ff_model_final) %>% kable(digits = 4)
 
 ```
 
 
 ```{r}
 rh_fourseam <- rh_fourseam %>% 
-  mutate(ideal_prob = (exp(0.230) * exp(ind_vert_break*0.037)))
+  mutate(ideal_prob = (exp(-0.1858 + ind_vert_break*0.0366)/ (1+exp(-0.1858 + ind_vert_break*0.0366))))
 
 rh_fourseam <- rh_fourseam %>% 
   mutate(stuff_plus = 100 * (ideal_prob/mean(ideal_prob)))
+
+rh_fourseam 
 
 ```
 
