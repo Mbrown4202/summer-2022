@@ -147,7 +147,7 @@ kable(rh_stats, caption = "Average RH Pitch Type Metrics", digits = 2)
 
 
 ```{r}
-r_freq <- right %>% count(pitch_name)
+r_freq <- right %>% count(pitch_type, pitch_name)
 kable(r_freq)
 ```
 
@@ -169,7 +169,7 @@ ggplot(data = left, mapping = aes(x=hor_break, y=ind_vert_break,
 
 
 ```{r}
-lh_stats <- left %>% group_by(pitch_name) %>% 
+lh_stats <- left %>% group_by(pitch_type) %>% 
   summarize(release_speed = mean(release_speed), 
             release_spin = mean(release_spin_rate),
             hor_break = mean(hor_break), 
@@ -180,7 +180,7 @@ kable(lh_stats, caption = "Average LH Pitch Type Metrics", digits = 2)
 ```
 
 ```{r}
-l_freq <- left %>% count(pitch_name)
+l_freq <- left %>% count(pitch_type, pitch_name)
 
 kable(l_freq)
 ```
@@ -222,7 +222,7 @@ left <- pitcher_ideal_creation(left)
 #### Curveball
 
 ```{r}
-right_curve <- right %>% filter(pitch_name == "Curveball")
+right_curve <- right %>% filter(pitch_type == "CU")
 right_curve <- right_curve %>% group_by(player_name) %>% 
   mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate) %>% 
   ungroup()
@@ -245,13 +245,160 @@ tidy(rh_cu_model_final) %>% kable(digits = 4)
 
 ```{r}
 right_curve <- right_curve %>% 
-  mutate(ideal_prob = (exp(0.0311 + 0.0121*hor_break + 0.0004*mean_centered_spinrate)
-                       / (1+exp(0.0311 + 0.0121*hor_break + 0.0004*mean_centered_spinrate))))
+  mutate(ideal_prob = (exp(0.0310 + 0.0120*hor_break + 0.0005*mean_centered_spinrate)
+                       / (1+exp(0.0310 + 0.0120*hor_break + 0.0005*mean_centered_spinrate))))
 
 right_curve <- right_curve %>% 
-  mutate(stuff_plus = 100 * (ideal_prob/mean(ideal_prob)))
+  mutate(pitch_rating = 100 * (ideal_prob/mean(ideal_prob)))
 ```
 
+
+#### Knuckle-Curve
+
+```{r}
+right_knuckle_curve <- right %>% filter(pitch_type == "KC")
+right_knuckle_curve <- right_knuckle_curve %>% group_by(player_name) %>% 
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate) %>% 
+  ungroup()
+
+rh_kc_model <- glmer(pitcher_ideal ~ release_speed + hor_break + 
+                       ind_vert_break + mean_centered_spinrate + (1|player_name),
+                   family = "binomial", data = right_knuckle_curve)
+
+
+tidy(rh_kc_model) %>% kable(digits = 4)
+```
+
+
+#### Slider 
+
+```{r}
+right_slider <- right %>% filter(pitch_type == "SL")
+right_slider <- right_slider %>% group_by(player_name) %>% 
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate) %>% 
+  ungroup()
+
+rh_sl_model <- glmer(pitcher_ideal ~ release_speed + hor_break + 
+                       ind_vert_break + mean_centered_spinrate + (1|player_name),
+                   family = "binomial", data = right_slider)
+
+
+tidy(rh_sl_model) %>% kable(digits = 4)
+```
+
+
+```{r}
+rh_sl_model_final <- glmer(pitcher_ideal ~
+                       release_speed + ind_vert_break + mean_centered_spinrate +
+                         (1|player_name), 
+                     family = "binomial", data = right_slider)
+tidy(rh_sl_model_final) %>% kable(digits = 4)
+```
+
+
+```{r}
+right_slider <- right_slider %>% 
+  mutate(ideal_prob = (exp(1.1590 + -0.0110*release_speed + ind_vert_break*0.0054 
+                           + 0.0003*mean_centered_spinrate)
+                       / (1+exp(1.1590 + -0.0110*release_speed + ind_vert_break*0.0054 
+                           + 0.0003*mean_centered_spinrate))))
+
+right_slider <- right_slider %>% 
+  mutate(pitch_rating = 100 * (ideal_prob/mean(ideal_prob)))
+```
+
+
+
+### Creating Left Handed Models 
+
+#### Curve
+
+```{r}
+left_curve <- left %>% filter(pitch_type == "CU")
+left_curve <- left_curve %>% group_by(player_name) %>% 
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate) %>% 
+  ungroup()
+
+lh_cu_model <- glmer(pitcher_ideal ~ release_speed + hor_break + 
+                       ind_vert_break + mean_centered_spinrate + (1|player_name),
+                   family = "binomial", data = left_curve)
+
+
+tidy(lh_cu_model) %>% kable(digits = 4)
+```
+
+
+```{r}
+lh_cu_model_final <- glmer(pitcher_ideal ~
+                       hor_break + mean_centered_spinrate + (1|player_name), 
+                     family = "binomial", data = left_curve)
+tidy(lh_cu_model_final) %>% kable(digits = 4)
+```
+
+
+```{r}
+left_curve <- left_curve %>% 
+  mutate(ideal_prob = (exp(0.1254 + -0.0074*hor_break + 0.0004*mean_centered_spinrate)
+                       / (1+exp(0.1254 + -0.0074*hor_break + 0.0004*mean_centered_spinrate))))
+
+left_curve <- left_curve %>% 
+  mutate(pitch_rating = 100 * (ideal_prob/mean(ideal_prob)))
+```
+
+
+#### Knuckle-Curve
+
+```{r}
+left_knuckle_curve <- left %>% filter(pitch_type == "KC")
+left_knuckle_curve <- left_knuckle_curve %>% group_by(player_name) %>% 
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate) %>% 
+  ungroup()
+
+lh_kc_model <- glmer(pitcher_ideal ~ release_speed + hor_break + 
+                       ind_vert_break + mean_centered_spinrate + (1|player_name),
+                   family = "binomial", data = left_knuckle_curve)
+
+
+tidy(rh_kc_model) %>% kable(digits = 4)
+```
+
+
+
+#### Slider 
+
+```{r}
+left_slider <- left %>% filter(pitch_type == "SL")
+left_slider <- left_slider %>% group_by(player_name) %>% 
+  mutate(mean_centered_spinrate = mean(release_spin_rate) - release_spin_rate) %>% 
+  ungroup()
+
+lh_sl_model <- glmer(pitcher_ideal ~ release_speed + hor_break + 
+                       ind_vert_break + mean_centered_spinrate + (1|player_name),
+                   family = "binomial", data = left_slider)
+
+
+tidy(lh_sl_model) %>% kable(digits = 4)
+```
+
+```{r}
+lh_sl_model_final <- glmer(pitcher_ideal ~
+                       hor_break + ind_vert_break + mean_centered_spinrate +
+                         (1|player_name), 
+                     family = "binomial", data = left_slider)
+tidy(lh_sl_model_final) %>% kable(digits = 4)
+```
+
+
+```{r}
+left_slider <- left_slider %>% 
+  mutate(ideal_prob = (exp(0.1821 + -0.0066*hor_break + ind_vert_break*0.0150 
+                           + 0.0002*mean_centered_spinrate)
+                       / (1+exp(0.1821 + -0.0066*hor_break + ind_vert_break*0.0150 
+                           + 0.0002*mean_centered_spinrate))))
+
+left_slider <- left_slider %>% 
+  mutate(pitch_rating = 100 * (ideal_prob/mean(ideal_prob)))
+```
 
 
 
