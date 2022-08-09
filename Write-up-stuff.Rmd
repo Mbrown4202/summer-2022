@@ -10,7 +10,9 @@ output:
 
 
 ## Introduction 
-The methodology of analyzing the performance of pitchers has drastically changed over time. At the surface one can evaluate at pitcher's win-loss record to determine their impact on the teams' performance. It's a results-based model, but includes several factors far out of a pitcher's control, fundamentally the 
+Throughout the establishment of baseball statistics, the perception of pitchers has surrounded around their earned run average and walk rate. Recently, there has been a focus on new techniques, such as using pitcher and pitch specific statistics to determine the most efficient way to evaluate pitchers. In 2015, Mike Sonne created a metric titled "Stuff+" in which he used a pitcher's change in velocity and break distance of off-speed pitches to determine a value relative to other pitchers (https://fantasy.fangraphs.com/using-the-stuff-metric-as-an-injury-identification-tool/). The following year, he used the stuff metric to discover that Marco Estrada recently saw a dip in his rating from his previous starts, releasing an article that the Blue Jays pitcher might be dealing with an injury. Sonne ended up being correct as it was announced that Estrada was suffering from a herniated disc. My report is inspired by Sonne's work, but takes a different approach. Similar to Driveline's December 2021 study of this new "Stuff" metric, this report will focus closer on individual pitches and how they compare within each pitcher and across different pitchers (https://www.drivelinebaseball.com/2021/12/what-is-stuff-quantifying-pitches-with-pitch-models/). However, instead of using a formula of percentiles for different metrics to determine a final value, my methodology will use a results-based approach to determine how certain pitching metrics alter the odds of an ideal result for the pitcher. 
+
+The data used for this analysis was extracted from baseballsavant.mlb.com. It consists of over 70000 pitches throughout the 2022 regular season from Opening Day to July 30th. To narrow the focus of this study, the data set consists of only breaking pitches, with a primary focus on sliders, knuckle curves, and curveballs. These indications are determined based on the "pitch type" in Baseball Savant's data. Right-handed pitchers in the dataset have a minimum of 200 breaking pitches thrown, and 
 
 
 
@@ -66,6 +68,11 @@ right <- right %>% mutate(hor_break = (pfx_x*12),
 
 ```{r pitch-breakup}
 all_rows <- rbind(right, left)
+keep_names = all_rows %>% group_by(player_name) %>% count() %>% ungroup() %>% 
+  filter(n>=30) %>% .$player_name
+right <- right %>% filter(player_name %in% keep_names) 
+left <- left %>% filter(player_name %in% keep_names) 
+
 ```
 
 
