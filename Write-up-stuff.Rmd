@@ -403,6 +403,17 @@ left_slider <- left_slider %>%
 
 
 
+```{r}
+applicable_models <- rbind(right_curve, right_slider, 
+                           left_curve, left_slider)
+
+player_means <- applicable_models %>% group_by(player_name) %>% summarise(mean_rating = mean(pitch_rating), 
+                                                                          pitches = n())
+arrange(player_means, desc(mean_rating)) %>% head(10) %>% kable(digits = 3, caption = "Top Ten Average Pitch Ratings By Player")
+```
+
+
+
 
 
 ## Appendix 
