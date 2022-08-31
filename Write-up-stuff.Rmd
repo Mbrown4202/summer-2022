@@ -12,8 +12,12 @@ output:
 ## Introduction 
 Throughout the establishment of baseball statistics, the perception of pitchers has surrounded around their earned run average and walk rate. Recently, there has been a focus on new techniques, such as using pitcher and pitch specific statistics to determine the most efficient way to evaluate pitchers. In 2015, Mike Sonne created a metric titled "Stuff+" in which he used a pitcher's change in velocity and break distance of off-speed pitches to determine a value relative to other pitchers (https://fantasy.fangraphs.com/using-the-stuff-metric-as-an-injury-identification-tool/). The following year, he used the stuff metric to discover that Marco Estrada recently saw a dip in his rating from his previous starts, releasing an article that the Blue Jays pitcher might be dealing with an injury. Sonne ended up being correct as it was announced that Estrada was suffering from a herniated disc. My report is inspired by Sonne's work, but takes a different approach. Similar to Driveline's December 2021 study of this new "Stuff" metric, this report will focus closer on individual pitches and how they compare within each pitcher and across different pitchers (https://www.drivelinebaseball.com/2021/12/what-is-stuff-quantifying-pitches-with-pitch-models/). However, instead of using a formula of percentiles for different metrics to determine a final value, my methodology will use a results-based approach to determine how certain pitching metrics alter the odds of an ideal result for the pitcher. 
 
-The data used for this analysis was extracted from baseballsavant.mlb.com. It consists of over 70000 pitches throughout the 2022 regular season from Opening Day to July 30th. To narrow the focus of this study, the data set consists of only breaking pitches, with a primary focus on sliders, knuckle curves, and curveballs. These indications are determined based on the "pitch type" in Baseball Savant's data. Right-handed pitchers in the dataset have a minimum of 200 breaking pitches thrown, and 
+The data used for this analysis was extracted from baseballsavant.mlb.com. It consists of over 70000 pitches throughout the 2022 regular season from Opening Day to July 30th. To narrow the focus of this study, the data set consists of only breaking pitches, with a primary focus on sliders, knuckle curves, and curveballs. These indications are determined based on the "pitch type" in Baseball Savant's data. The main pitching variables are: 
 
+"release_speed" - Speed of baseball once released from the pitcher's hand (mph)
+"release_spin_rate" - Spin of the baseball once released from the pitcher's hand (rpm)
+"pfx_x" - Horizontal movement of baseball during the duration of the pitch 
+"pfx_z" - Vertical movement of baseball during the duration of the pitch 
 
 
 ```{r setup, include=FALSE}
@@ -51,7 +55,7 @@ right <- read_csv("right_all_innings.csv")
 ```
 
 
-
+Statcast and Baseball Savant records pfx_x and pfx_z in feet. To evaluate how the change in each of these variables affects our response, converting to inches is reasonable. Additionally, the data sets do not have a minimum requirement of pitches, meaning that there are most likely position players included. To remove position players and pitchers with very little major league experience throwing breaking balls, a minimum requirement of 30 pitches will be set for analysis. 
 
 ```{r inch-switch}
 left <- left %>% drop_na(release_speed, release_spin_rate, pfx_x, 
@@ -93,6 +97,8 @@ ggplot(data = subset(right, !is.na(estimated_ba_using_speedangle)),
 
 ```
 
+
+
 ```{r}
 ggplot(data = subset(left, !is.na(estimated_ba_using_speedangle)), 
        mapping = aes(x=launch_speed, y=launch_angle, 
@@ -103,7 +109,12 @@ ggplot(data = subset(left, !is.na(estimated_ba_using_speedangle)),
                       color = "Estimated Batting Average") 
 ```
 
-```{r}
+The graphs above show an almost identical distribution of batted balls between left-handed and right-handed pitchers. It is also worth noting that estimated batting average, a measure utilized by Statcast to approximate the probability of a batted ball resulting in a hit, is heavily affected by both exit velocity and launch angle. 
+
+
+
+
+```{r in play}
 all_rows <- all_rows %>% 
   mutate(inplay_out = ifelse(events == c("double_play", "field_out", 
                                          "fielders_choice_out", "force_out", 
@@ -111,7 +122,7 @@ all_rows <- all_rows %>%
                                          "other_out", "sac_fly",
                                          "sac_fly_double_play"), "1", "0"))
 
-r_in_play_df <- all_rows %>% filter(description == "hit_into_play")
+r_in_play_df <- all_rows %>% filter(description == "hit_into_play") %>% filter(release_speed >= 70)
 
 ggplot(data = r_in_play_df, mapping = aes(x=release_speed, y=launch_speed, 
                                 color = inplay_out)) + 
@@ -124,6 +135,7 @@ ggplot(data = r_in_play_df, mapping = aes(x=release_speed, y=launch_speed,
 
 ```
 
+After filtering out batted balls hit less than 70 mph, it is apparent that there is not a clear relationship between pitch speed, exit velocity, and an out being recorded. This visual shows that the game of baseball can't solely be determined from speed, as television broadcasts often use these statistics to broadly evaluate the quality of a pitch. 
 
 
 ### Righty EDA
@@ -192,15 +204,10 @@ l_freq <- left %>% count(pitch_type, pitch_name)
 kable(l_freq)
 ```
 
-
+After looking at summary statistics for both right and left handed pitch types, it makes the most sense to proceed for sliders, knuckle-curves, and curveballs. For slow curves (listed as "CS") and eephus pitches, there is not a large enough sample size to provide useful insight. 
 
 
 ## Methodology 
-
-```{r}
-#right <- subset(right, select = -inplay_out )
-
-```
 
 
 ```{r}
@@ -223,6 +230,8 @@ right <- pitcher_ideal_creation(right)
 left <- pitcher_ideal_creation(left)
 ```
 
+
+In creating a response variable I decided to simplify the result of the pitch into an ideal and unideal scenario for the pitcher. Any pitch not put into play and results in a strike is an ideal result for the pitch. Additionally, any ball put in play with an expected batting average of less than .311, the average estimated batting average for batted balls in the entire dataset, is considered an ideal result. These ideal results are assigned as 1 and all other outcomes are given a 0, creating a binary response variable. Using this response and given the correlation in pitches between pitchers, a multi-level approach is needed with each individual pitch as the first level observational unit and the pitchers as the second level observational unit. To maximize the amount of predictor variables that can be included into the model for each pitch type, a level of significance of .2 will suffice. 
 
 ### Creating Right Handed Models 
 
@@ -252,8 +261,8 @@ tidy(rh_cu_model_final) %>% kable(digits = 4)
 
 ```{r}
 right_curve <- right_curve %>% 
-  mutate(ideal_prob = (exp(0.0310 + 0.0120*hor_break + 0.0005*mean_centered_spinrate)
-                       / (1+exp(0.0310 + 0.0120*hor_break + 0.0005*mean_centered_spinrate))))
+  mutate(ideal_prob = (exp(.0294 + 0.0138*hor_break + 0.0004*mean_centered_spinrate)
+                       / (1+exp(.0294 + 0.0138*hor_break + 0.0004*mean_centered_spinrate))))
 
 right_curve <- right_curve %>% 
   mutate(pitch_rating = 100 * (ideal_prob/mean(ideal_prob)))
@@ -305,9 +314,9 @@ tidy(rh_sl_model_final) %>% kable(digits = 4)
 
 ```{r}
 right_slider <- right_slider %>% 
-  mutate(ideal_prob = (exp(1.1590 + -0.0110*release_speed + ind_vert_break*0.0054 
+  mutate(ideal_prob = (exp(1.3766 + -0.0135*release_speed + ind_vert_break*0.0072 
                            + 0.0003*mean_centered_spinrate)
-                       / (1+exp(1.1590 + -0.0110*release_speed + ind_vert_break*0.0054 
+                       / (1+exp(1.3766 + -0.0135*release_speed + ind_vert_break*0.0072 
                            + 0.0003*mean_centered_spinrate))))
 
 right_slider <- right_slider %>% 
@@ -345,8 +354,8 @@ tidy(lh_cu_model_final) %>% kable(digits = 4)
 
 ```{r}
 left_curve <- left_curve %>% 
-  mutate(ideal_prob = (exp(0.1254 + -0.0074*hor_break + 0.0004*mean_centered_spinrate)
-                       / (1+exp(0.1254 + -0.0074*hor_break + 0.0004*mean_centered_spinrate))))
+  mutate(ideal_prob = (exp(0.1373 + -0.0064*hor_break + 0.0004*mean_centered_spinrate)
+                       / (1+exp(0.1373 + -0.0064*hor_break + 0.0004*mean_centered_spinrate))))
 
 left_curve <- left_curve %>% 
   mutate(pitch_rating = 100 * (ideal_prob/mean(ideal_prob)))
@@ -398,9 +407,9 @@ tidy(lh_sl_model_final) %>% kable(digits = 4)
 
 ```{r}
 left_slider <- left_slider %>% 
-  mutate(ideal_prob = (exp(0.1821 + -0.0066*hor_break + ind_vert_break*0.0150 
+  mutate(ideal_prob = (exp(0.1934 + -0.0062*hor_break + ind_vert_break*0.0143 
                            + 0.0002*mean_centered_spinrate)
-                       / (1+exp(0.1821 + -0.0066*hor_break + ind_vert_break*0.0150 
+                       / (1+exp(0.1934 + -0.0062*hor_break + ind_vert_break*0.0143 
                            + 0.0002*mean_centered_spinrate))))
 
 left_slider <- left_slider %>% 
