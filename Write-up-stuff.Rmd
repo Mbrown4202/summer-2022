@@ -231,7 +231,7 @@ left <- pitcher_ideal_creation(left)
 ```
 
 
-In creating a response variable I decided to simplify the result of the pitch into an ideal and unideal scenario for the pitcher. Any pitch not put into play and results in a strike is an ideal result for the pitch. Additionally, any ball put in play with an expected batting average of less than .311, the average estimated batting average for batted balls in the entire dataset, is considered an ideal result. These ideal results are assigned as 1 and all other outcomes are given a 0, creating a binary response variable. Using this response and given the correlation in pitches between pitchers, a multi-level approach is needed with each individual pitch as the first level observational unit and the pitchers as the second level observational unit. To maximize the amount of predictor variables that can be included into the model for each pitch type, a level of significance of .2 will suffice. 
+In creating a response variable I decided to simplify the result of the pitch into an ideal and unideal scenario for the pitcher. Any pitch not put into play and results in a strike is a pitcher ideal result for the pitch. Additionally, any ball put in play with an expected batting average of less than .311, the average estimated batting average for batted balls in the entire dataset, is considered an ideal result. These ideal results are assigned as 1 and all other outcomes are given a 0, creating a binary response variable. Using this response and given the correlation in pitches between pitchers, a multi-level approach is needed with each individual pitch as the first level observational unit and the pitchers as the second level observational unit. To maximize the amount of predictor variables that can be included into the model for each pitch type, a level of significance of .2 will suffice. 
 
 ### Creating Right Handed Models 
 
@@ -257,7 +257,7 @@ rh_cu_model_final <- glmer(pitcher_ideal ~
                      family = "binomial", data = right_curve)
 tidy(rh_cu_model_final) %>% kable(digits = 4)
 ```
-
+With induced vertical break and release speed having high p-values exceeding the .2 threshold, we can re-fit the model with horizontal break and mean-centered-spinrate, a variable that evaluates how much the spin rate differs from a player's average spin on that particular pitch. 
 
 ```{r}
 right_curve <- right_curve %>% 
@@ -268,6 +268,7 @@ right_curve <- right_curve %>%
   mutate(pitch_rating = 100 * (ideal_prob/mean(ideal_prob)))
 ```
 
+With the final model for right-handed curves, we can conclude that within this data set the log odds for a pitcher-ideal result increases by 0.0138 for every additional inch in horizontal break, and by 0.0004 for every rpm that exceeds a player's average spin for their right-handed curveballs. We then can create a pitch rating with each curveball centered at 100 which classifies as the average probability for a pitcher-ideal result. 
 
 #### Knuckle-Curve
 
@@ -285,6 +286,7 @@ rh_kc_model <- glmer(pitcher_ideal ~ release_speed + hor_break +
 tidy(rh_kc_model) %>% kable(digits = 4)
 ```
 
+All predictors have p-values above our level of significance so we can't determine conclusive results for right-handed knuckle-curves. 
 
 #### Slider 
 
@@ -302,6 +304,7 @@ rh_sl_model <- glmer(pitcher_ideal ~ release_speed + hor_break +
 tidy(rh_sl_model) %>% kable(digits = 4)
 ```
 
+All predictors except for horizontal break can be refitted for a final right-handed sliders model. 
 
 ```{r}
 rh_sl_model_final <- glmer(pitcher_ideal ~
