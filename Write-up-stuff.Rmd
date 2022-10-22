@@ -248,14 +248,14 @@ rh_cu_model <- glmer(pitcher_ideal ~ release_speed + hor_break +
                    family = "binomial", data = right_curve)
 
 
-tidy(rh_cu_model) %>% kable(digits = 4)
+tidy(rh_cu_model) %>% kable(digits = 4, caption = "Initial RH Curveball Model")
 ```
 
 ```{r}
 rh_cu_model_final <- glmer(pitcher_ideal ~
                        hor_break + mean_centered_spinrate + (1|player_name), 
                      family = "binomial", data = right_curve)
-tidy(rh_cu_model_final) %>% kable(digits = 4)
+tidy(rh_cu_model_final) %>% kable(digits = 4, caption = "Final RH Curveball Model")
 ```
 With induced vertical break and release speed having high p-values exceeding the .2 threshold, we can re-fit the model with horizontal break and mean-centered-spinrate, a variable that evaluates how much the spin rate differs from a player's average spin on that particular pitch. 
 
@@ -283,7 +283,7 @@ rh_kc_model <- glmer(pitcher_ideal ~ release_speed + hor_break +
                    family = "binomial", data = right_knuckle_curve)
 
 
-tidy(rh_kc_model) %>% kable(digits = 4)
+tidy(rh_kc_model) %>% kable(digits = 4, caption = "Initial RH Knuckle-Curveball Model")
 ```
 
 All predictors have p-values above our level of significance so we can't determine conclusive results for right-handed knuckle-curves. 
